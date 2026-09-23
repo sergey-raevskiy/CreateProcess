@@ -71,6 +71,9 @@ static void print_usage(FILE *f)
     static const LPCWSTR usage =
         L"Usage: CreateProcess [OPTIONS] @[COMMAND_LINE]" NL
         L"" NL
+        L"The first '@' terminates CreateProcess options." NL
+        L"Everything following it is passed verbatim as the child process command line." NL
+        L"" NL
         L"Valid options:" NL
         L"" NL
         L"  --with-logon" NL
