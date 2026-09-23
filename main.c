@@ -68,7 +68,7 @@ static void print_usage(FILE *f)
 {
 #define __STRINGIFY_FLAG(f) L"      - " #f NL
 
-    static const LPCWSTR usage =
+    fputws(
         L"Usage: CreateProcess [OPTIONS] @[COMMAND_LINE]" NL
         L"" NL
         L"The first '@' terminates CreateProcess options." NL
@@ -88,12 +88,10 @@ static void print_usage(FILE *f)
         L"" NL
         L"  -f [--creation-flag] ARG" NL
         L"    Specify process creation flags. The valid values are:" NL
-        FOR_CREATION_FLAGS(__STRINGIFY_FLAG)
-        ;
+        FOR_CREATION_FLAGS(__STRINGIFY_FLAG),
+        f);
 
 #undef __STRINGIFY_FLAG
-
-    fputws(usage, f);
 }
 
 static int die_usage(LPCWSTR fmt, ...)
