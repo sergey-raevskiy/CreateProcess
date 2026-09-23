@@ -3,4 +3,8 @@
   <ItemGroup>
     <ClCompile Include="main.c" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include=".editorconfig" />
+    <None Include="README.md" />
+  </ItemGroup>
 </Project>
