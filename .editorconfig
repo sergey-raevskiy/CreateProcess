@@ -1,0 +1,4 @@
+[*.{c,h}]
+
+cpp_space_pointer_reference_alignment = right
+cpp_indent_within_parentheses = align_to_parenthesis

@@ -23,6 +23,10 @@
     DO(EXTENDED_STARTUPINFO_PRESENT)     \
     DO(INHERIT_PARENT_AFFINITY)
 
+#define FOR_LOGON_FLAGS(DO)       \
+    DO(LOGON_WITH_PROFILE)        \
+    DO(LOGON_NETCREDENTIALS_ONLY)
+
 static int argc;
 static LPCWSTR *argv;
 static int argind;
@@ -85,7 +89,7 @@ static int die_usage(LPCWSTR fmt, ...)
     va_start(ap, fmt);
     vfwprintf(stderr, fmt, ap);
     va_end(ap);
-    fputwc(L'\n', stderr);
+    fputws(L"\n\n", stderr);
 
     print_usage(stderr);
 
@@ -111,20 +115,33 @@ static int die(LPCWSTR fmt, ...)
     return EXIT_FAILURE;
 }
 
-static DWORD parse_creation_flag(LPCWSTR str)
-{
 #define __CHECK_FLAG(f) if (wcscmp(str, L"" #f) == 0) return f;
 
+static DWORD parse_creation_flag(LPCWSTR str)
+{
     FOR_CREATION_FLAGS(__CHECK_FLAG);
-
-#undef __CHECK_FLAG
 
     /* Default. */
     return 0;
 }
 
+static DWORD parse_logon_flag(LPCWSTR str)
+{
+    FOR_LOGON_FLAGS(__CHECK_FLAG);
+
+    /* Default. */
+    return 0;
+}
+
+#undef __CHECK_FLAG
+
 static int run(LPCWSTR proc_cmdline)
 {
+    BOOL with_logon = FALSE;
+    LPCWSTR username = NULL;
+    LPCWSTR domain = NULL;
+    LPCWSTR password = NULL;
+    DWORD logon_flags = 0;
     DWORD creation_flags = 0;
     STARTUPINFOW psi;
     PROCESS_INFORMATION pi;
@@ -139,7 +156,34 @@ static int run(LPCWSTR proc_cmdline)
     {
         LPCWSTR val;
 
-        if (opt_take(L"-f", &val) || opt_take(L"--creation-flag", &val))
+        if (opt_take(L"--with-logon", NULL))
+        {
+            with_logon = TRUE;
+        }
+        else if (opt_take(L"--username", &val))
+        {
+            username = val;
+        }
+        else if (opt_take(L"--domain", &val))
+        {
+            domain = val;
+        }
+        else if (opt_take(L"--password", &val))
+        {
+            password = val;
+        }
+        else if (opt_take(L"-l", &val) || opt_take(L"--logon-flag", &val))
+        {
+            DWORD flag = parse_logon_flag(val);
+
+            if (flag == 0)
+            {
+                return die_usage(L"Unrecognized logon flag '%s'", val);
+            }
+
+            logon_flags |= flag;
+        }
+        else if (opt_take(L"-f", &val) || opt_take(L"--creation-flag", &val))
         {
             DWORD flag = parse_creation_flag(val);
 
@@ -163,17 +207,35 @@ static int run(LPCWSTR proc_cmdline)
     ZeroMemory(&psi, sizeof(psi));
     psi.cb = sizeof(psi);
 
-    rc = CreateProcessW(
-        NULL,
-        proc_cmdline,
-        NULL,
-        NULL,
-        FALSE,
-        creation_flags,
-        NULL,
-        NULL,
-        &psi,
-        &pi);
+    if (with_logon)
+    {
+        rc = CreateProcessWithLogonW(
+            username,
+            domain,
+            password,
+            logon_flags,
+            NULL,
+            proc_cmdline,
+            creation_flags,
+            NULL,
+            NULL,
+            &psi,
+            &pi);
+    }
+    else
+    {
+        rc = CreateProcessW(
+            NULL,
+            proc_cmdline,
+            NULL,
+            NULL,
+            FALSE,
+            creation_flags,
+            NULL,
+            NULL,
+            &psi,
+            &pi);
+    }
 
     if (!rc)
     {
