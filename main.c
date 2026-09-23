@@ -160,16 +160,21 @@ static int run(LPCWSTR proc_cmdline)
     PROCESS_INFORMATION pi;
     BOOL rc;
 
-    if (!proc_cmdline)
-    {
-        return die_usage(L"No command line specified for process");
-    }
-
     while (TRUE)
     {
         LPCWSTR val;
 
-        if (opt_take(L"--with-logon", NULL))
+        if (opt_take(L"-?", NULL) || opt_take(L"--help", NULL))
+        {
+            fputws(
+                L"CreateProcess: Call the CreateProcess() WinAPI function with all knobs exposed." NL
+                L"" NL,
+                stderr);
+
+            print_usage(stderr);
+            return EXIT_SUCCESS;
+        }
+        else if (opt_take(L"--with-logon", NULL))
         {
             with_logon = TRUE;
         }
@@ -215,6 +220,11 @@ static int run(LPCWSTR proc_cmdline)
         {
             break;
         }
+    }
+
+    if (!proc_cmdline)
+    {
+        return die_usage(L"No command line specified for process");
     }
 
     ZeroMemory(&psi, sizeof(psi));
