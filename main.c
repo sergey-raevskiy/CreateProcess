@@ -69,8 +69,20 @@ static void print_usage(FILE *f)
 #define __STRINGIFY_FLAG(f) L"      - " #f NL
 
     static const LPCWSTR usage =
-        L"usage: CreateProcess [OPTIONS] @[COMMAND_LINE]" NL
+        L"Usage: CreateProcess [OPTIONS] @[COMMAND_LINE]" NL
+        L"" NL
         L"Valid options:" NL
+        L"" NL
+        L"  --with-logon" NL
+        L"    Create process with using logon credentials (call the CreateProcessWithLogon() function)." NL
+        L"" NL
+        L"  --username ARG, --domain ARG, --password ARG" NL
+        L"    Specify username, domain and password for logon." NL
+        L"" NL
+        L"  -l [--logon-flag] ARG" NL
+        L"    Specify process logon flags. The valid values are:" NL
+        FOR_LOGON_FLAGS(__STRINGIFY_FLAG)
+        L"" NL
         L"  -f [--creation-flag] ARG" NL
         L"    Specify process creation flags. The valid values are:" NL
         FOR_CREATION_FLAGS(__STRINGIFY_FLAG)
@@ -196,7 +208,7 @@ static int run(LPCWSTR proc_cmdline)
         }
         else if (opt_take(NULL, &val))
         {
-            return die_usage(L"Unrecognized option '%s'", val);
+            return die_usage(L"Option '%s' is unrecognized or requires an argument.", val);
         }
         else
         {
