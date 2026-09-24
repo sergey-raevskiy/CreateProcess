@@ -97,6 +97,11 @@ static void print_usage(FILE *f)
         L"" NL
         L"      CreateProcess -e TEMP=C:\\MyTemp @cmd.exe" NL
         L"      CreateProcess -E POWERSHELL_TELEMETRY_OPTOUT @PowerShell.exe" NL
+        L"" NL
+        L"  --clean-environment" NL
+        L"    Use empty environment as base. Examples:" NL
+        L"" NL
+        L"      CreateProcess --clean-environment -e TEMP=C:\\MyTemp -e PATH=C:\\Bin @cmd.exe" NL
         ;
 
 #undef __STRINGIFY_FLAG
@@ -169,6 +174,7 @@ static int run(LPCWSTR proc_cmdline,
     DWORD logon_flags = 0;
     DWORD creation_flags = 0;
     LPCWSTR process_environment = NULL;
+    BOOL clean_environment = FALSE;
     STARTUPINFOW psi;
     PROCESS_INFORMATION pi;
     BOOL rc;
@@ -233,6 +239,10 @@ static int run(LPCWSTR proc_cmdline,
         {
             env_set(unset_environment, val);
         }
+        else if (opt_take(L"--clean-environment", NULL))
+        {
+            clean_environment = TRUE;
+        }
         else if (opt_take(NULL, &val))
         {
             return die_usage(L"Option '%s' is unrecognized or requires an argument.", val);
@@ -250,14 +260,16 @@ static int run(LPCWSTR proc_cmdline,
 
     if (!env_is_empty(environment) || !env_is_empty(unset_environment))
     {
-        LPWCH env;
         envblock_t b;
 
         env_init(&b);
 
-        env = GetEnvironmentStringsW();
-        env_import(&b, env);
-        FreeEnvironmentStringsW(env);
+        if (!clean_environment)
+        {
+            LPWCH env = GetEnvironmentStringsW();
+            env_import(&b, env);
+            FreeEnvironmentStringsW(env);
+        }
 
         env_override(&b, environment, FALSE);
         env_override(&b, unset_environment, TRUE);
