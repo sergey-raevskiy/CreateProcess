@@ -70,7 +70,7 @@ static void print_usage(FILE *f)
 {
 #define __STRINGIFY_FLAG(f) L"      - " #f NL
 
-    fputws(
+    static const LPCWSTR usage =
         L"Usage: CreateProcess [OPTIONS] @[COMMAND_LINE]" NL
         L"" NL
         L"The first '@' terminates CreateProcess options." NL
@@ -96,10 +96,12 @@ static void print_usage(FILE *f)
         L"    Set or unset environment variable(s). Examples:" NL
         L"" NL
         L"      CreateProcess -e TEMP=C:\\MyTemp @cmd.exe" NL
-        L"      CreateProcess -E POWERSHELL_TELEMETRY_OPTOUT @PowerShell.exe" NL,
-        f);
+        L"      CreateProcess -E POWERSHELL_TELEMETRY_OPTOUT @PowerShell.exe" NL
+        ;
 
 #undef __STRINGIFY_FLAG
+
+    fputws(usage, f);
 }
 
 static int die_usage(LPCWSTR fmt, ...)
