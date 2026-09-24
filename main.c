@@ -126,7 +126,7 @@ static int die_usage(LPCWSTR fmt, ...)
 
 static int die_win32(DWORD err, LPCWSTR msg)
 {
-    fwprintf(stderr, L"Error: %s (error code %d).\n", msg, err);
+    fwprintf(stderr, L"Error: %s (error code %lu).\n", msg, err);
     return EXIT_FAILURE;
 }
 
