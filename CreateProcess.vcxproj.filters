@@ -2,9 +2,13 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.c" />
+    <ClCompile Include="env.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />
     <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="env.h" />
   </ItemGroup>
 </Project>

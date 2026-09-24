@@ -1,3 +1,5 @@
+#include "env.h"
+
 #include <Windows.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -88,7 +90,13 @@ static void print_usage(FILE *f)
         L"" NL
         L"  -f [--creation-flag] ARG" NL
         L"    Specify process creation flags. The valid values are:" NL
-        FOR_CREATION_FLAGS(__STRINGIFY_FLAG),
+        FOR_CREATION_FLAGS(__STRINGIFY_FLAG)
+        L"" NL
+        L"  -e [--environment], -E [--unset-environment]" NL
+        L"    Set or unset environment variable(s). Examples:" NL
+        L"" NL
+        L"      CreateProcess -e TEMP=C:\\MyTemp @cmd.exe" NL
+        L"      CreateProcess -E POWERSHELL_TELEMETRY_OPTOUT @PowerShell.exe" NL,
         f);
 
 #undef __STRINGIFY_FLAG
@@ -148,7 +156,9 @@ static DWORD parse_logon_flag(LPCWSTR str)
 
 #undef __CHECK_FLAG
 
-static int run(LPCWSTR proc_cmdline)
+static int run(LPCWSTR proc_cmdline,
+               envblock_t *environment,
+               envblock_t *unset_environment)
 {
     BOOL with_logon = FALSE;
     LPCWSTR username = NULL;
@@ -156,6 +166,7 @@ static int run(LPCWSTR proc_cmdline)
     LPCWSTR password = NULL;
     DWORD logon_flags = 0;
     DWORD creation_flags = 0;
+    LPCWSTR process_environment = NULL;
     STARTUPINFOW psi;
     PROCESS_INFORMATION pi;
     BOOL rc;
@@ -212,6 +223,14 @@ static int run(LPCWSTR proc_cmdline)
 
             creation_flags |= flag;
         }
+        else if (opt_take(L"-e", &val) || opt_take(L"--environment", &val))
+        {
+            env_set(environment, val);
+        }
+        else if (opt_take(L"-E", &val) || opt_take(L"--unset-environment", &val))
+        {
+            env_set(unset_environment, val);
+        }
         else if (opt_take(NULL, &val))
         {
             return die_usage(L"Option '%s' is unrecognized or requires an argument.", val);
@@ -227,6 +246,24 @@ static int run(LPCWSTR proc_cmdline)
         return die_usage(L"No command line specified for process");
     }
 
+    if (!env_is_empty(environment) || !env_is_empty(unset_environment))
+    {
+        LPWCH env;
+        envblock_t b;
+
+        env_init(&b);
+
+        env = GetEnvironmentStringsW();
+        env_import(&b, env);
+        FreeEnvironmentStringsW(env);
+
+        env_override(&b, environment, FALSE);
+        env_override(&b, unset_environment, TRUE);
+
+        process_environment = env_export(&b);
+        env_clear(&b);
+    }
+
     ZeroMemory(&psi, sizeof(psi));
     psi.cb = sizeof(psi);
 
@@ -240,7 +277,7 @@ static int run(LPCWSTR proc_cmdline)
             NULL,
             proc_cmdline,
             creation_flags,
-            NULL,
+            process_environment,
             NULL,
             &psi,
             &pi);
@@ -254,7 +291,7 @@ static int run(LPCWSTR proc_cmdline)
             NULL,
             FALSE,
             creation_flags,
-            NULL,
+            process_environment,
             NULL,
             &psi,
             &pi);
@@ -262,8 +299,11 @@ static int run(LPCWSTR proc_cmdline)
 
     if (!rc)
     {
+        free(process_environment);
         return die_win32(GetLastError(), L"Failed to create process");
     }
+
+    free(process_environment);
 
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
@@ -275,6 +315,8 @@ int wmain()
 {
     LPWSTR cmdline = wcsdup(GetCommandLine());
     LPWSTR proc_cmdline;
+    envblock_t environment;
+    envblock_t unset_environment;
     int rc;
 
     if (!cmdline)
@@ -302,7 +344,14 @@ int wmain()
     /* Skip program name. */
     argind = 1;
 
-    rc = run(proc_cmdline);
+    env_init(&environment);
+    env_init(&unset_environment);
+
+    rc = run(proc_cmdline, &environment, &unset_environment);
+
+    env_clear(&environment);
+    env_clear(&unset_environment);
+
     LocalFree(argv);
     free(cmdline);
 
